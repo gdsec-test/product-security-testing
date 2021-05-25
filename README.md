@@ -1,4 +1,4 @@
-# product-security-testing
+# product-security-testing [![Repository Prod Workflow](https://github.com/gdcorp-infosec/product-security-testing/actions/workflows/cicd-prod.yml/badge.svg?branch=main)](https://github.com/gdcorp-infosec/product-security-testing/actions/workflows/cicd-prod.yml)
 
 Product security testing repo.
 
