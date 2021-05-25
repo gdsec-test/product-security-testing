@@ -1,0 +1,6 @@
+[tool.tartufo]
+repo-path = "."
+exclude-paths = ".tartufo-excludes"
+
+[tool.black]
+line-length = 88

@@ -1,0 +1,5 @@
+.venv
+.github
+.pre-commit-config.yaml
+pyproject.toml
+README.md
