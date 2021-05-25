@@ -20,6 +20,8 @@ jobs:
   unit-test:
     needs: tartufo-job
     runs-on: ubuntu-latest
+    env:
+      FAVORITE_COLOR: ${{ secrets.FAVORITE_COLOR }}
     steps:
       - name: Checkout this repo on to a job runner.
         uses: actions/checkout@5a4ac9002d0be2fb38bd78e4b4dbde5606d7042f # Checkout this repository https://github.com/actions/checkout/commits/main
@@ -31,10 +33,13 @@ jobs:
         run: |
           pip install -r requirements.txt
           python -m unittest -v
+          echo What is your Favorite Color?
+          echo $FAVORITE_COLOR
+          echo blue? oh ok.
 
   deploy:
     needs: unit-test
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
     steps:
       - name: Checkout this repo on to a job runner.
         uses: actions/checkout@5a4ac9002d0be2fb38bd78e4b4dbde5606d7042f # Checkout this repository https://github.com/actions/checkout/commits/main
