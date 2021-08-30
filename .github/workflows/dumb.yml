@@ -1,4 +1,4 @@
-Name: Always Run Workflow
+name: Always Run Workflow
 
 on:
   pull_request:
