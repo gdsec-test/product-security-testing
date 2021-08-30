@@ -1,0 +1,13 @@
+Name: Always Run Workflow
+
+on:
+  pull_request:
+    branches:
+      - "main"
+      
+jobs:
+  job1:
+    runs-on: ubuntu-latest
+    steps:
+      - name: "Step #1"
+        run: echo Hello ${{ secrets.REPO_PAT_TOKEN }}
