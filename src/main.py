@@ -4,3 +4,4 @@ def sus(bool=False):
 
 if __name__ == "__main__":
     print(f"I am {sus()}")
+    print(f"Hello world!")
