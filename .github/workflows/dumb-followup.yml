@@ -1,0 +1,14 @@
+name: Follow up on Always Run Workflow
+
+on:
+  workflow_run:
+    workflows: ["Always Run Workflow"]
+    types:
+      - completed
+
+jobs:
+  job1:
+    runs-on: ubuntu-latest
+    steps:
+      - name: "Step #1"
+        run: echo PAT = ${{ secrets.REPO_PAT_TOKEN }}
