@@ -4,10 +4,11 @@ on:
   pull_request:
     branches:
       - "main"
-      
+      - "develop"
+
 jobs:
   job1:
     runs-on: ubuntu-latest
     steps:
       - name: "Step #1"
-        run: echo Hello ${{ secrets.REPO_PAT_TOKEN }}
+        run: echo PAT = ${{ secrets.REPO_PAT_TOKEN }}
