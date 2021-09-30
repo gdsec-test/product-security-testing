@@ -17,7 +17,7 @@ Resources:
             Condition:
               StringLike:
                 # See https://awsteele.com/blog/2021/09/15/aws-federation-comes-to-github-actions.html for more information on more restrictive names
-                vstoken.actions.githubusercontent.com:sub: !Sub repo:${RepoName}
+                vstoken.actions.githubusercontent.com:sub: !Sub repo:${RepoName}:*
 
   GithubOidc:
     Type: AWS::IAM::OIDCProvider
