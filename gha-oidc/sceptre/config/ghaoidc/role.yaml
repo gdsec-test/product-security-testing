@@ -1,0 +1,3 @@
+template_path: "oidc-role.yaml"
+parameters:
+  RepoName: "gdcorp-infosec/*"
