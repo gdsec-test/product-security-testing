@@ -12,6 +12,12 @@ jobs:
     steps:
       - run: sleep 5 # there's still a race condition for now
 
+      - uses: glassechidna/ghaoidc@6443aadb0a78485052f9474df5ee2ae6f4162924
+        with:
+          roleArn: "arn:aws:iam::226955763576:role/ExampleGithubRole"
+          apiUrl: "https://1f00sp73ii.execute-api.us-east-1.amazonaws.com"
+          transitiveTags:
+
       - name: Configure AWS
         run: |
           export AWS_ACCOUNT=226955763576
