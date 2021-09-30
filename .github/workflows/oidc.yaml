@@ -7,7 +7,7 @@ jobs:
   build:
     runs-on: ubuntu-latest
     permissions:
-      # id-token: write
+      id-token: write # needed for GH actions JWT
       contents: read
     steps:
       - run: sleep 5 # there's still a race condition for now
@@ -19,9 +19,8 @@ jobs:
           export AWS_ROLE_ARN=arn:aws:iam::$AWS_ACCOUNT:role/$ROLE_NAME
           export AWS_WEB_IDENTITY_TOKEN_FILE=/tmp/awscreds
           export AWS_DEFAULT_REGION=us-east-1
-          # export ACTIONS_ID_TOKEN_REQUEST_URL="https://1f00sp73ii.execute-api.us-east-1.amazonaws.com"
-          export ACTIONS_ID_TOKEN_REQUEST_URL="https://vstoken.actions.githubusercontent.com"
-          # export ACTIONS_ID_TOKEN_REQUEST_TOKEN=''
+          export ACTIONS_ID_TOKEN_REQUEST_URL="https://1f00sp73ii.execute-api.us-east-1.amazonaws.com"
+          # export ACTIONS_ID_TOKEN_REQUEST_URL="https://vstoken.actions.githubusercontent.com"
 
           echo AWS_WEB_IDENTITY_TOKEN_FILE=$AWS_WEB_IDENTITY_TOKEN_FILE >> $GITHUB_ENV
           echo AWS_ROLE_ARN=$AWS_ROLE_ARN >> $GITHUB_ENV
