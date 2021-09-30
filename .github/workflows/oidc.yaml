@@ -12,31 +12,36 @@ jobs:
     steps:
       - run: sleep 5 # there's still a race condition for now
 
-      - uses: glassechidna/ghaoidc@6443aadb0a78485052f9474df5ee2ae6f4162924
+      # - uses: glassechidna/ghaoidc@6443aadb0a78485052f9474df5ee2ae6f4162924
+      #   with:
+      #     roleArn: "arn:aws:iam::226955763576:role/ExampleGithubRole"
+      #     apiUrl: "https://1f00sp73ii.execute-api.us-east-1.amazonaws.com"
+      #     transitiveTags:
+      - name: aws-oidc-login
+        uses: zarnovican/aws-oidc-login-action@v1.0.1
         with:
-          roleArn: "arn:aws:iam::226955763576:role/ExampleGithubRole"
-          apiUrl: "https://1f00sp73ii.execute-api.us-east-1.amazonaws.com"
-          transitiveTags:
+          role: "arn:aws:iam::226955763576:role/ExampleGithubRole"
+          aws-region: us-east-1
 
-      - name: Configure AWS
-        run: |
-          export AWS_ACCOUNT=226955763576
-          export ROLE_NAME=ExampleGithubRole
-          export AWS_ROLE_ARN=arn:aws:iam::$AWS_ACCOUNT:role/$ROLE_NAME
-          export AWS_WEB_IDENTITY_TOKEN_FILE=/tmp/awscreds
-          export AWS_DEFAULT_REGION=us-east-1
-          export ACTIONS_ID_TOKEN_REQUEST_URL="https://1f00sp73ii.execute-api.us-east-1.amazonaws.com"
-          # export ACTIONS_ID_TOKEN_REQUEST_URL="https://vstoken.actions.githubusercontent.com"
+      # - name: Configure AWS
+      #   run: |
+      #     export AWS_ACCOUNT=226955763576
+      #     export ROLE_NAME=ExampleGithubRole
+      #     export AWS_ROLE_ARN=arn:aws:iam::$AWS_ACCOUNT:role/$ROLE_NAME
+      #     export AWS_WEB_IDENTITY_TOKEN_FILE=/tmp/awscreds
+      #     export AWS_DEFAULT_REGION=us-east-1
+      #     export ACTIONS_ID_TOKEN_REQUEST_URL="https://1f00sp73ii.execute-api.us-east-1.amazonaws.com"
+      #     # export ACTIONS_ID_TOKEN_REQUEST_URL="https://vstoken.actions.githubusercontent.com"
 
-          echo AWS_WEB_IDENTITY_TOKEN_FILE=$AWS_WEB_IDENTITY_TOKEN_FILE >> $GITHUB_ENV
-          echo AWS_ROLE_ARN=$AWS_ROLE_ARN >> $GITHUB_ENV
-          echo AWS_DEFAULT_REGION=$AWS_DEFAULT_REGION >> $GITHUB_ENV
+      #     echo AWS_WEB_IDENTITY_TOKEN_FILE=$AWS_WEB_IDENTITY_TOKEN_FILE >> $GITHUB_ENV
+      #     echo AWS_ROLE_ARN=$AWS_ROLE_ARN >> $GITHUB_ENV
+      #     echo AWS_DEFAULT_REGION=$AWS_DEFAULT_REGION >> $GITHUB_ENV
 
-          echo "${ACTIONS_ID_TOKEN_REQUEST_TOKEN:-'no ACTIONS_ID_TOKEN_REQUEST_TOKEN set'}"
+      #     echo "${ACTIONS_ID_TOKEN_REQUEST_TOKEN:-'no ACTIONS_ID_TOKEN_REQUEST_TOKEN set'}"
 
-          curl -H "Authorization: bearer $ACTIONS_ID_TOKEN_REQUEST_TOKEN" "$ACTIONS_ID_TOKEN_REQUEST_URL" > /tmp/save
-          cat /tmp/save
-          cat /tmp/save | jq -r '.value' > $AWS_WEB_IDENTITY_TOKEN_FILE
-          cat $AWS_WEB_IDENTITY_TOKEN_FILE
+      #     curl -H "Authorization: bearer $ACTIONS_ID_TOKEN_REQUEST_TOKEN" "$ACTIONS_ID_TOKEN_REQUEST_URL" > /tmp/save
+      #     cat /tmp/save
+      #     cat /tmp/save | jq -r '.value' > $AWS_WEB_IDENTITY_TOKEN_FILE
+      #     cat $AWS_WEB_IDENTITY_TOKEN_FILE
 
       - run: aws sts get-caller-identity # just an example. why not deploy something?
