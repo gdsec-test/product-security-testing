@@ -12,16 +12,16 @@ jobs:
     steps:
       - run: sleep 5 # there's still a race condition for now
 
-      # - uses: glassechidna/ghaoidc@6443aadb0a78485052f9474df5ee2ae6f4162924
-      #   with:
-      #     roleArn: "arn:aws:iam::226955763576:role/ExampleGithubRole"
-      #     apiUrl: "https://1f00sp73ii.execute-api.us-east-1.amazonaws.com"
-      #     transitiveTags:
-      - name: aws-oidc-login
-        uses: zarnovican/aws-oidc-login-action@v1.0.1
+      - uses: gdcorp-infosec/product-security-testing-ghaoidc@6443aadb0a78485052f9474df5ee2ae6f4162924
         with:
-          role: "arn:aws:iam::226955763576:role/ExampleGithubRole"
-          aws-region: us-east-1
+          roleArn: "arn:aws:iam::226955763576:role/ExampleGithubRole"
+          apiUrl: "https://1f00sp73ii.execute-api.us-east-1.amazonaws.com"
+          transitiveTags:
+      # - name: aws-oidc-login
+      #   uses: zarnovican/aws-oidc-login-action@v1.0.1
+      #   with:
+      #     role: "arn:aws:iam::226955763576:role/ExampleGithubRole"
+      #     aws-region: us-east-1
 
       # - name: Configure AWS
       #   run: |
