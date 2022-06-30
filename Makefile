@@ -60,7 +60,6 @@ clean:
 .PHONY: validate
 validate: check $(VENVDIR)
 	$(call env_require,AWS_REGION,$(AWS_REGION))
-	$(call env_require,AWS_ACCOUNT_ID,$(AWS_ACCOUNT_ID))
 	source $(VENV_ACTIVATE_SCRIPT) && \
 		cd sceptre && \
 		sceptre validate .
