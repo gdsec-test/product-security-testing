@@ -3,3 +3,4 @@ stack_name: "{{ project_code }}-{{ app_name }}-iam-role"
 parameters:
   RoleNameSuffix: "{{ app_name }}-role"
   ManagedPolicyArns: "arn:aws:iam::aws:policy/AdministratorAccess"
+  AssumingServices: "ec2.amazonaws.com"
