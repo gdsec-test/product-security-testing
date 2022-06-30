@@ -1,2 +1,4 @@
-pre-commit==2.11.1
-black
+awscli
+sceptre
+botocore
+pre-commit
