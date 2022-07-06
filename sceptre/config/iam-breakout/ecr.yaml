@@ -1,0 +1,10 @@
+template_path: ecr.yaml
+stack_name: "{{ project_code }}-{{ app_name }}-ecr"
+parameters:
+  ECRRepoName: "{{ app_name }}-ecr"
+  DataClassificationTag: "non-pii"
+hooks:
+  after_launch:
+    - !cmd "cd app && make"
+  before_delete:
+    - !cmd "cd app && make delete"

@@ -1,0 +1,13 @@
+template_path: lambda-stack.yaml
+stack_name: "{{ project_code }}-{{ app_name }}-lambda-stack"
+parameters:
+  RoleNameSuffix: "{{ app_name }}-lambda-role"
+  ManagedPolicyArns: "arn:aws:iam::aws:policy/AWSLambda_ReadOnlyAccess"
+  AssumingServices: "lambda.amazonaws.com"
+  LambdaName: "{{ app_name }}-lambda"
+  ContainerImageUri: "{{ environment_variable.AWS_ACCOUNT }}.dkr.ecr.{{ environment_variable.AWS_REGION }}.amazonaws.com/{{ app_name }}-ecr:latest"
+dependencies:
+  - iam-breakout/ecr.yaml
+hooks:
+  after_launch:
+    - !cmd "cd app && make update"

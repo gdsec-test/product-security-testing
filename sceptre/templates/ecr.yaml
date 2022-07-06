@@ -1,0 +1,48 @@
+AWSTemplateFormatVersion: 2010-09-09
+Description: Deploy the ECR Service Catalog Product
+Parameters:
+  # Use default value or override in Stack Config
+  ECRRepoName:
+    Type: String
+    Description: Repo Name..
+  DataClassificationTag:
+    Type: String
+    Description: Data classification for repository images. More information is available in README.md
+    AllowedValues:
+      - "pii"
+      - "non-pii"
+  MaxImageCount:
+    Type: Number
+    Description: Max Image Versions to keep
+    Default: 5
+  ReplicationConfigurationRules:
+    Type: String
+    Description: ECR ReplicationConfiguration rules
+    Default: ""
+  RepositoryPolicyText:
+    Type: String
+    Description: ECR RepositoryPolicyText
+    Default: ""
+Resources:
+  Repository:
+    Type: AWS::ServiceCatalog::CloudFormationProvisionedProduct
+    Properties:
+      ProductName: ECR
+      ProvisioningArtifactName: 1.2.0
+      ProvisionedProductName: !Ref ECRRepoName
+      ProvisioningParameters:
+        # required parameter
+        - Key: ECRRepoName
+          Value: !Ref ECRRepoName
+        - Key: DataClassificationTag
+          Value: !Ref DataClassificationTag
+        # common optional parameter
+        - Key: ECRMaxImageCount
+          Value: !Ref MaxImageCount
+        - Key: ECRReplicationConfigurationRules
+          Value: !Ref ReplicationConfigurationRules
+        - Key: RepositoryPolicyText
+          Value: !Ref RepositoryPolicyText
+      Tags:
+        - Key: doNotShutDown
+          Value: true

@@ -1,0 +1,117 @@
+AWSTemplateFormatVersion: 2010-09-09
+Description: Launch Lambda function product from SC
+Parameters:
+  #################
+  #### IAM
+  #################
+  RoleNameSuffix:
+    Type: String
+    Description: Name of custom Role appended to TeamName-custom-
+  ManagedPolicyArns:
+    Type: String
+    Description: Comma delimited list of Managed IAM Policy ARNs to attach to the Role (but marked as String). Please be aware these ARNs are account specific. In this example we are providing the format for an ARN of the IAM::Policy that was created providing permissions to RedShift
+  AssumingServices:
+    Type: String
+    Description: Comma delimited list of Services that needs to assume the role (but marked as String)
+    Default: ""
+  AssumingRoles:
+    Type: String
+    Description: Comma delimited list of Services that needs to assume the role (but marked as String)
+    Default: ""
+
+  #################
+  #### Lambda
+  #################
+  LambdaName:
+    Type: String
+    Description: Name of lambda function
+  ContainerImageUri:
+    Type: String
+    Description: Image URI
+  LambdaDescription:
+    Type: String
+    Description: Description about lambda function
+    Default: ""
+  MemorySize:
+    Type: Number
+    Description: The Memory Size of the Lambda function.
+    Default: 128
+  Timeout:
+    Type: Number
+    Description: Duration after which lambda times out.
+    Default: 30
+  VpcSubnetIds:
+    Type: AWS::SSM::Parameter::Value<List<String>>
+    Description: SSM parameter referencing the private dx subnet IDs
+    Default: /AdminParams/VPC/PrivateSubnets
+  VpcSecurityGroup:
+    Type: AWS::SSM::Parameter::Value<AWS::EC2::SecurityGroup::Id>
+    Description: SSM parameter referencing the private security group ID
+    Default: /AdminParams/VPC/PrivateSG
+  DevelopmentTeam:
+    Type: AWS::SSM::Parameter::Value<String>
+    Description: SSM Parameter for team owning the created resources.
+    Default: /AdminParams/Team/Name
+    AllowedValues:
+      - /AdminParams/Team/Name
+  DevelopmentEnvironment:
+    Type: AWS::SSM::Parameter::Value<String>
+    Description: SSM Parameter for development environment this will live in.
+    Default: /AdminParams/Team/Environment
+    AllowedValues:
+      - /AdminParams/Team/Environment
+Resources:
+  IAMRole:
+    Type: AWS::ServiceCatalog::CloudFormationProvisionedProduct
+    Properties:
+      ProductName: IAMRole
+      ProvisioningArtifactName: 1.2.0
+      ProvisionedProductName: !Sub ${RoleNameSuffix}-role
+      ProvisioningParameters:
+        - Key: AssumingServices
+          Value: !Ref AssumingServices
+        - Key: AssumingRoles
+          Value: !Ref AssumingRoles
+        - Key: RoleNameSuffix
+          Value: !Ref RoleNameSuffix
+        - Key: ManagedPolicyArns
+          Value:
+            !Join [
+              ",",
+              [
+                !Ref ManagedPolicyArns,
+                !Sub "arn:aws:iam::${AWS::AccountId}:policy/AllowResourcesAccessToCloudWatchPolicy",
+              ],
+            ]
+
+      Tags:
+        - Key: doNotShutDown
+          # change to false if it can be turned off outside of business hours
+          Value: "true"
+
+  ExampleLambdaFunction:
+    Type: AWS::ServiceCatalog::CloudFormationProvisionedProduct
+    Properties:
+      ProductName: Lambda
+      ProvisioningArtifactName: 3.5.0
+      ProvisionedProductName: !Sub ${LambdaName}-lambda
+      ProvisioningParameters:
+        - Key: Runtime
+          Value: python3.8
+        - Key: MemorySize
+          Value: !Ref MemorySize
+        - Key: Timeout
+          Value: !Ref Timeout
+        - Key: VpcSubnetIds
+          Value: !Join [",", !Ref VpcSubnetIds]
+        - Key: VpcSecurityGroups
+          Value: !Ref VpcSecurityGroup
+        - Key: LambdaName
+          Value: !Ref LambdaName
+        - Key: LambdaDescription
+          Value: !Ref LambdaDescription
+        - Key: ContainerImageUri
+          Value: !Ref ContainerImageUri
+      Tags:
+        - Key: doNotShutDown
+          Value: true

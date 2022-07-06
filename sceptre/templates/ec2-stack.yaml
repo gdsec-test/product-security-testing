@@ -1,0 +1,136 @@
+AWSTemplateFormatVersion: 2010-09-09
+Description: Deploy the IAM Custom Role Service Catalog Product.
+Parameters:
+  #################
+  #### IAM
+  #################
+  RoleNameSuffix:
+    Type: String
+    Description: Name of custom Role appended to TeamName-custom-
+  ManagedPolicyArns:
+    Type: String
+    Description: Comma delimited list of Managed IAM Policy ARNs to attach to the Role (but marked as String). Please be aware these ARNs are account specific. In this example we are providing the format for an ARN of the IAM::Policy that was created providing permissions to RedShift
+  AssumingServices:
+    Type: String
+    Description: Comma delimited list of Services that needs to assume the role (but marked as String)
+    Default: ""
+  AssumingRoles:
+    Type: String
+    Description: Comma delimited list of Services that needs to assume the role (but marked as String)
+    Default: ""
+
+  ################
+  #### Instance Profile
+  ###############
+  InstanceProfileName:
+    Type: String
+    Description: A friendly name for the provisioned product
+  Path:
+    Type: String
+    Description: A path
+    Default: ""
+
+  ################
+  #### EC2
+  ###############
+
+  InstanceName:
+    Type: String
+  InstanceType:
+    Type: String
+    Description: EC2 Instance Type
+    Default: t3.small
+  AMIImageId:
+    Type: String
+    Description: AMI
+    Default: /GoldenAMI/gd-amzn2/latest
+  # pull Subnet and Security Group IDs from SSM Parameter Store
+  PrivateSubnetIds:
+    Type: AWS::SSM::Parameter::Value<List<String>>
+    Description: SSM parameter referencing the Private subnet IDs
+    # use /AdminParams/VPC/DXAPPSubnets for Private DX subnets
+    Default: /AdminParams/VPC/PrivateSubnets
+  PrivateSecurityGroupId:
+    Type: AWS::SSM::Parameter::Value<AWS::EC2::SecurityGroup::Id>
+    Description: SSM parameter referencing the Private security group ID
+    # use /AdminParams/VPC/PrivateDXAPPSG for DX access
+    Default: /AdminParams/VPC/PrivateSG
+
+Resources:
+  IAMRole:
+    Type: AWS::ServiceCatalog::CloudFormationProvisionedProduct
+    Properties:
+      ProductName: IAMRole
+      ProvisioningArtifactName: 1.2.0
+      ProvisionedProductName: !Sub ${RoleNameSuffix}-role
+      ProvisioningParameters:
+        - Key: AssumingServices
+          Value: !Ref AssumingServices
+        - Key: AssumingRoles
+          Value: !Ref AssumingRoles
+        - Key: RoleNameSuffix
+          Value: !Ref RoleNameSuffix
+        - Key: ManagedPolicyArns
+          Value:
+            !Join [
+              ",",
+              [
+                !Ref ManagedPolicyArns,
+                !Sub "arn:aws:iam::${AWS::AccountId}:policy/AllowResourcesAccessToCloudWatchPolicy",
+              ],
+            ]
+
+      Tags:
+        - Key: doNotShutDown
+          # change to false if it can be turned off outside of business hours
+          Value: "true"
+
+  InstanceProfile:
+    Type: AWS::ServiceCatalog::CloudFormationProvisionedProduct
+    Properties:
+      ProductName: IAMInstanceProfile
+      ProvisioningArtifactName: 1.0.0
+      ProvisionedProductName: !Ref InstanceProfileName
+      ProvisioningParameters:
+        - Key: RoleArnSSMKey
+          Value: !GetAtt IAMRole.Outputs.RoleSSMParamName
+        - Key: InstanceProfileName
+          Value: !Ref InstanceProfileName
+        - Key: Path
+          Value: !Ref Path
+
+      Tags:
+        - Key: doNotShutDown
+          # change to false if it can be turned off outside of business hours
+          Value: "true"
+
+  Instance:
+    Type: AWS::ServiceCatalog::CloudFormationProvisionedProduct
+    DependsOn: InstanceProfile
+    Properties:
+      ProductName: EC2
+      ProvisioningArtifactName: 2.9.0
+      ProvisionedProductName: !Sub ${InstanceName}-ec2
+      ProvisioningParameters:
+        # required parameters
+        - Key: InstanceType
+          Value: !Ref InstanceType
+        - Key: AMIImageId
+          Value: !Ref AMIImageId
+        - Key: VPCSubnetId
+          Value: !Select [0, !Ref PrivateSubnetIds]
+        - Key: WebServerSecurityGroupIds
+          Value: !Ref PrivateSecurityGroupId
+        - Key: EC2TagName
+          Value: !Ref InstanceName
+        - Key: CustomIAMRoleNameSuffix
+          Value: !Ref RoleNameSuffix
+      Tags:
+        - Key: doNotShutDown
+          # allow shutdown in pre-prod for cost savings
+          Value: false
+
+Outputs:
+  StackArn:
+    Value: !GetAtt IAMRole.CloudformationStackArn
+    Description: The ARN of the created cloud formation stack

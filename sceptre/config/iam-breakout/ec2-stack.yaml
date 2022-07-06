@@ -1,0 +1,8 @@
+template_path: ec2-stack.yaml
+stack_name: "{{ project_code }}-{{ app_name }}-ec2-stack"
+parameters:
+  RoleNameSuffix: "{{ app_name }}-role"
+  ManagedPolicyArns: "arn:aws:iam::aws:policy/AdministratorAccess,arn:aws:iam::aws:policy/service-role/AmazonEC2RoleforSSM"
+  AssumingServices: "ec2.amazonaws.com"
+  InstanceProfileName: "{{ app_name }}-instance-profile"
+  InstanceName: "{{ app_name }}-ec2"
