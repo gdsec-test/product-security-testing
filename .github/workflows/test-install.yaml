@@ -1,0 +1,30 @@
+name: "Test install"
+on:
+  workflow_dispatch:
+
+jobs:
+  run_test:
+    runs-on: [self-hosted, non-pci, deploy]
+    environment: non-pci-dev-private
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@5a4ac9002d0be2fb38bd78e4b4dbde5606d7042f
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@1417e62aeacec5e7fbe447bb7712d50847507342
+        with:
+          aws-region: us-west-2
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          role-skip-session-tagging: true
+          role-duration-seconds: 900
+      - name: run_test
+        id: run_test
+        uses: ./.github/actions/install-executable
+        with:
+          bucket: s3://gd-security-dev-private-assets-lambda-scratch-uswest2/
+          executable: helm
+          algorithm: sha384
+          checksum: edcfb0bcd9156ea1056b6ac6468011e49214c3557ed559520ed2657b7791d2e0ffe6c867e49dc3db9c50afa1fa7b953e
+      - name: check_version
+        id: check_version
+        run: |
+          helm version

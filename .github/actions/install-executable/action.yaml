@@ -1,0 +1,118 @@
+name: Install Executable
+description: |-
+  Install an executable into the PATH given a source S3 bucket.
+  The executable MUST be have at the following name:
+    s3://${s3_bucket}[/${prefix}]/${executable}/${checksum}
+  Where the ${checksum} is the checksum of the executable itself
+inputs:
+  bucket:
+    description: S3 Bucket name to download from (no "s3://" prefix)
+    required: true
+  prefix:
+    description: S3 Prefix of the binary folder
+    required: false
+    default: "bin"
+  executable:
+    description: The name of the executable to [download and] install
+    required: true
+  algorithm:
+    description: The secure hash algorithm used to validate downloaded executable
+    required: false
+    default: sha256
+  checksum:
+    description: The checksum of the file to download
+    required: true
+
+runs:
+  using: "composite"
+  steps:
+    - id: create_install_dir
+      shell: bash
+      run: |
+        install_dir="$(mktemp -d -t 'github-actions.install-executable.${{ inputs.executable }}.XXXXXXXXXXXXXXXX')"
+        echo "::debug:: Created temporary directory: ${install_dir}"
+        echo "::set-output name=dir_name::${install_dir}"
+
+    - id: set_checksum_command
+      shell: bash
+      run: |
+        echo "::debug:: Requested algorithm '${{ inputs.algorithm }}' for verification purposes"
+        ALGO='${{ inputs.algorithm }}'
+        ALGO="${ALGO%%sum}"  # remove "sum" suffix if provided
+        case "${ALGO}" in
+          'sha512' )
+            COMMAND='sha512sum'
+            ;;
+          'sha384' )
+            COMMAND='sha384sum'
+            ;;
+          'sha256' )
+            COMMAND='sha256sum'
+            ;;
+          'sha224' )
+            COMMAND='sha224sum'
+            ;;
+          'blake2b' )
+            COMMAND='b2sum'
+            ;;
+          'sha1' | 'md5' | 'ck' | 'crc32' | 'bsd' | 'xxh' )
+            echo "::error:: Insecure algorithm '${{ inputs.algorithm }}' is not allowed to be selected"
+            exit 1
+            ;;
+          * )
+            echo "::error:: Unsupported algorithm '${{ inputs.algorithm }}'"
+            exit 1
+            ;;
+        esac
+        # Another possibility is to use the 'cksum' command and its '-a' flag (e.g., 'cksum -a sha512')
+        if ! command -v "${COMMAND}" &> /dev/null
+        then
+          echo "::error:: Could not find command for algorithm '${{ inputs.algorithm }}'"
+          exit 2
+        fi
+        echo "::set-output name=command::$(command -v ${COMMAND})"
+
+    - id: download_executable
+      shell: bash
+      run: |
+        S3_BUCKET='${{ inputs.bucket }}'
+        S3_BUCKET="${S3_BUCKET##'s3://'}"  # remove "s3://" prefix if provided
+        S3_BUCKET="${S3_BUCKET%'/'}"  # remove trailing '/' if provided
+        S3_PREFIX='${{ inputs.prefix }}'
+        EXECUTABLE='${{ inputs.executable }}'
+        CHECKSUM='${{ inputs.checksum }}'
+        FINAL_S3_PREFIX="${S3_PREFIX:+${S3_PREFIX}/}${EXECUTABLE}"
+        FINAL_PATH="$(printf 's3://%s/%s/%s' "${S3_BUCKET}" "${FINAL_S3_PREFIX}" "${CHECKSUM}" )"
+        echo "::debug:: Full S3 path is ${FINAL_PATH}"
+        aws s3 cp "${FINAL_PATH}" '${{ steps.create_install_dir.outputs.dir_name }}'
+
+    - id: validate_checksum
+      shell: bash
+      run: |
+        pushd '${{ steps.create_install_dir.outputs.dir_name }}'
+        # Use untagged format because we do not necessarily know what the prefix is for the tagged format
+        printf '${{ inputs.checksum }} ${{ inputs.checksum }}' | '${{ steps.set_checksum_command.outputs.command }}' -c -
+        popd
+
+    - id: add_to_path
+      shell: bash
+      run: |
+        pushd '${{ steps.create_install_dir.outputs.dir_name }}'
+        mv '${{ inputs.checksum }}' '${{ inputs.executable }}'
+        chmod 0555 '${{ inputs.executable }}'
+        popd
+        echo '${{ steps.create_install_dir.outputs.dir_name }}' >> "${GITHUB_PATH}"
+
+    # Validate installation in succeeded in another step. Reason? According to the documentation,
+    # > The current running action can not access the updated path variable
+    # https://docs.github.com/en/actions/using-workflows/workflow-commands-for-github-actions#adding-a-system-path
+    - id: validate_install
+      shell: bash
+      run: |
+        if ! command -v '${{ inputs.executable }}' &> /dev/null
+        then
+          echo "::error:: Could not find '${{ inputs.executable }}' in the path even after installation"
+          echo "::info:: PATH: ${PATH}"
+          cat ${GITHUB_PATH}
+          exit 3
+        fi
