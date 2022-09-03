@@ -22,7 +22,7 @@ jobs:
         with:
           bucket: s3://gd-security-dev-private-assets-lambda-scratch-uswest2/
           executable: helm
-          algorithm: sha384
+          algorithm: SHA384
           checksum: edcfb0bcd9156ea1056b6ac6468011e49214c3557ed559520ed2657b7791d2e0ffe6c867e49dc3db9c50afa1fa7b953e
       - name: check_version
         id: check_version

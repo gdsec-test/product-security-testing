@@ -16,9 +16,12 @@ inputs:
     description: The name of the executable to [download and] install
     required: true
   algorithm:
-    description: The secure hash algorithm used to validate downloaded executable
+    description: |-
+      The hash algorithm used to validate downloaded executable.
+      For all possible algorithms, see the 'cksum' command.
+      Note that only secure algorithms are supported.
     required: false
-    default: sha256
+    default: SHA256
   checksum:
     description: The checksum of the file to download
     required: true
@@ -33,44 +36,30 @@ runs:
         echo "::debug:: Created temporary directory: ${install_dir}"
         echo "::set-output name=dir_name::${install_dir}"
 
-    - id: set_checksum_command
+    - id: check_command
       shell: bash
       run: |
-        echo "::debug:: Requested algorithm '${{ inputs.algorithm }}' for verification purposes"
-        ALGO='${{ inputs.algorithm }}'
-        ALGO="${ALGO%%sum}"  # remove "sum" suffix if provided
-        case "${ALGO}" in
-          'sha512' )
-            COMMAND='sha512sum'
+        command -v "cksum"
+        cksum --version
+
+    - id: check_algorithm
+      shell: bash
+      run: |
+        echo "::debug:: Requested algorithm '${{ inputs.algorithm }}' for checksum verification"
+
+        case '${{ inputs.algorithm }}' in
+          'SHA512' | 'SHA384' | 'SHA256' | 'SHA224' | 'BLAKE2b' )
+            # OK
             ;;
-          'sha384' )
-            COMMAND='sha384sum'
-            ;;
-          'sha256' )
-            COMMAND='sha256sum'
-            ;;
-          'sha224' )
-            COMMAND='sha224sum'
-            ;;
-          'blake2b' )
-            COMMAND='b2sum'
-            ;;
-          'sha1' | 'md5' | 'ck' | 'crc32' | 'bsd' | 'xxh' )
+          'BSD' | 'SYSV' | 'CRC' | 'MD5' | 'SHA1' | 'SM3' )
             echo "::error:: Insecure algorithm '${{ inputs.algorithm }}' is not allowed to be selected"
             exit 1
             ;;
           * )
             echo "::error:: Unsupported algorithm '${{ inputs.algorithm }}'"
-            exit 1
+            exit 2
             ;;
         esac
-        # Another possibility is to use the 'cksum' command and its '-a' flag (e.g., 'cksum -a sha512')
-        if ! command -v "${COMMAND}" &> /dev/null
-        then
-          echo "::error:: Could not find command for algorithm '${{ inputs.algorithm }}'"
-          exit 2
-        fi
-        echo "::set-output name=command::$(command -v ${COMMAND})"
 
     - id: download_executable
       shell: bash
@@ -88,11 +77,14 @@ runs:
 
     - id: validate_checksum
       shell: bash
+      env:
+        # Format for a tagged checksum is: ALGORITHM (FILENAME) = CHECKSUM
+        # e.g., SHA512 (/tmp/github-actions.install-executable.example.XXXXXXXXXXXXXXXX/example_checksum) = example_checksum
+        # Validate using `cksum -c -` (the `-c` means "check", the second `-` means read from STDIN)
+        expected_tagged_value: '${{ inputs.algorithm }} (${{ steps.create_install_dir.outputs.dir_name }}/${{ inputs.checksum }}) = ${{ inputs.checksum }}'
       run: |
-        pushd '${{ steps.create_install_dir.outputs.dir_name }}'
-        # Use untagged format because we do not necessarily know what the prefix is for the tagged format
-        printf '${{ inputs.checksum }} ${{ inputs.checksum }}' | '${{ steps.set_checksum_command.outputs.command }}' -c -
-        popd
+        echo "::debug:: Expected value: ${{ env.expected_tagged_value }}"
+        printf '${{ env.expected_tagged_value }}' | cksum -c -
 
     - id: add_to_path
       shell: bash
@@ -103,7 +95,7 @@ runs:
         popd
         echo '${{ steps.create_install_dir.outputs.dir_name }}' >> "${GITHUB_PATH}"
 
-    # Validate installation in succeeded in another step. Reason? According to the documentation,
+    # Validate installation in succeeded in another step. According to the documentation,
     # > The current running action can not access the updated path variable
     # https://docs.github.com/en/actions/using-workflows/workflow-commands-for-github-actions#adding-a-system-path
     - id: validate_install
