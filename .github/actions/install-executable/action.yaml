@@ -2,21 +2,33 @@ name: Install Executable
 description: |-
   Install an executable into the PATH given a source S3 bucket.
   The executable MUST be have at the following name:
-    s3://${s3_bucket}[/${prefix}]/${executable}/${checksum}
+    s3://${bucket}[/${prefix}]/${executable}[/${postfix}]${architecture}/${checksum}
   Where the ${checksum} is the checksum of the executable itself
 inputs:
   bucket:
-    description: S3 Bucket name to download from (no "s3://" prefix)
+    description: S3 Bucket to download from
     required: true
   prefix:
-    description: S3 Prefix of the binary folder
+    description: S3 Prefix of the folder containing executables in the bucket
     required: false
     default: "bin"
   executable:
     description: The name of the executable to [download and] install
     required: true
+  postfix:
+    description: An optional path component after the name of the executable but before the architecture
+    required: false
+    default: ""
+  architecture:
+    description: |-
+      The architecture of the binary to download.
+      If not provided, this Action attempts to determine the host machine architecture.
+    required: false
+    default: "unknown"
   algorithm:
-    description: The secure hash algorithm used to validate downloaded executable
+    description: |-
+      The hash algorithm used to validate downloaded executable.
+      Note that only SHA-2 algorithms are allowed at this time.
     required: false
     default: sha256
   checksum:
@@ -32,6 +44,32 @@ runs:
         install_dir="$(mktemp -d -t 'github-actions.install-executable.${{ inputs.executable }}.XXXXXXXXXXXXXXXX')"
         echo "::debug:: Created temporary directory: ${install_dir}"
         echo "::set-output name=dir_name::${install_dir}"
+
+    - id: get_arch
+      shell: bash
+      run: |
+        ARCH='${{ inputs.architecture }}'
+
+        if [[ "x_${ARCH}" == "x_unknown" ]]
+        then
+          echo "::debug:: No architecture provided, attempting to determine"
+
+          if command -v arch &> /dev/null
+          then
+            echo "::debug:: Attempting to determine architecture using 'arch' command"
+            ARCH="$(arch)"
+          else
+            echo "::debug:: Attempting to determine architecture using 'uname' command"
+            ARCH="$(uname -m)"
+          fi
+        fi
+
+        if [[ "x_${ARCH}" == "x_unknown" ]] || [[ -z "${ARCH}" ]]
+        then
+          echo "::warning:: Unknown architecture, defaulting to 'x86_64'"
+          ARCH='x86_64'
+        fi
+        echo "::set-output name=arch::${ARCH}"
 
     - id: set_checksum_command
       shell: bash
@@ -52,9 +90,6 @@ runs:
           'sha224' )
             COMMAND='sha224sum'
             ;;
-          'blake2b' )
-            COMMAND='b2sum'
-            ;;
           'sha1' | 'md5' | 'ck' | 'crc32' | 'bsd' | 'xxh' )
             echo "::error:: Insecure algorithm '${{ inputs.algorithm }}' is not allowed to be selected"
             exit 1
@@ -64,12 +99,15 @@ runs:
             exit 1
             ;;
         esac
-        # Another possibility is to use the 'cksum' command and its '-a' flag (e.g., 'cksum -a sha512')
+
+        echo "::debug:: Using '${COMMAND}' for algorithm '${{ inputs.algorithm }}'"
+
         if ! command -v "${COMMAND}" &> /dev/null
         then
           echo "::error:: Could not find command for algorithm '${{ inputs.algorithm }}'"
           exit 2
         fi
+
         echo "::set-output name=command::$(command -v ${COMMAND})"
 
     - id: download_executable
@@ -78,13 +116,31 @@ runs:
         S3_BUCKET='${{ inputs.bucket }}'
         S3_BUCKET="${S3_BUCKET##'s3://'}"  # remove "s3://" prefix if provided
         S3_BUCKET="${S3_BUCKET%'/'}"  # remove trailing '/' if provided
-        S3_PREFIX='${{ inputs.prefix }}'
-        EXECUTABLE='${{ inputs.executable }}'
-        CHECKSUM='${{ inputs.checksum }}'
-        FINAL_S3_PREFIX="${S3_PREFIX:+${S3_PREFIX}/}${EXECUTABLE}"
-        FINAL_PATH="$(printf 's3://%s/%s/%s' "${S3_BUCKET}" "${FINAL_S3_PREFIX}" "${CHECKSUM}" )"
-        echo "::debug:: Full S3 path is ${FINAL_PATH}"
+
+        PREFIX='${{ inputs.prefix }}'
+        PREFIX="${PREFIX%'/'}"  # normalize: remove trailing '/' if provided
+        PREFIX="${PREFIX#'/'}"  # normalize: remove leading '/' if provided
+        readonly FINAL_PREFIX="${PREFIX:+${PREFIX}/}"  # append a trailing '/'
+
+        POSTFIX='${{ inputs.postfix }}'
+        POSTFIX="${POSTFIX%'/'}"  # normalize: remove trailing '/' if provided
+        POSTFIX="${POSTFIX#'/'}"  # normalize: remove leading '/' if provided
+        readonly FINAL_POSTFIX="${POSTFIX:+/${POSTFIX}}"  # prepend a leading '/'
+
+        readonly EXECUTABLE='${{ inputs.executable }}'
+        readonly CHECKSUM='${{ inputs.checksum }}'
+
+        readonly FINAL_S3_PREFIX="${FINAL_PREFIX}${EXECUTABLE}${FINAL_POSTFIX}/${{ steps.get_arch.outputs.arch }}"
+        readonly FINAL_PATH="$(printf 's3://%s/%s/%s' "${S3_BUCKET}" "${FINAL_S3_PREFIX}" "${CHECKSUM}" )"
+
+        echo "::notice:: Downloading '${EXECUTABLE}' from '${FINAL_PATH}' to '${{ steps.create_install_dir.outputs.dir_name }}'"
+
         aws s3 cp "${FINAL_PATH}" '${{ steps.create_install_dir.outputs.dir_name }}'
+        pushd '${{ steps.create_install_dir.outputs.dir_name }}'
+        stat '${{ inputs.checksum }}'  # check if it was downloaded as expected
+        chmod 0444 '${{ inputs.checksum }}'  # de-fang it until after we verify its checksum
+        echo "::notice:: Successfully downloaded from '${FINAL_PATH}'"
+        popd
 
     - id: validate_checksum
       shell: bash
@@ -92,6 +148,7 @@ runs:
         pushd '${{ steps.create_install_dir.outputs.dir_name }}'
         # Use untagged format because we do not necessarily know what the prefix is for the tagged format
         printf '${{ inputs.checksum }} ${{ inputs.checksum }}' | '${{ steps.set_checksum_command.outputs.command }}' -c -
+        echo "::notice:: Verification passed for '${{ inputs.executable }}' using algorithm '${{ inputs.algorithm }}' with checksum '${{ inputs.checksum }}'"
         popd
 
     - id: add_to_path
@@ -103,7 +160,7 @@ runs:
         popd
         echo '${{ steps.create_install_dir.outputs.dir_name }}' >> "${GITHUB_PATH}"
 
-    # Validate installation in succeeded in another step. Reason? According to the documentation,
+    # Validate installation in succeeded in another step. According to the documentation,
     # > The current running action can not access the updated path variable
     # https://docs.github.com/en/actions/using-workflows/workflow-commands-for-github-actions#adding-a-system-path
     - id: validate_install
@@ -112,7 +169,6 @@ runs:
         if ! command -v '${{ inputs.executable }}' &> /dev/null
         then
           echo "::error:: Could not find '${{ inputs.executable }}' in the path even after installation"
-          echo "::info:: PATH: ${PATH}"
-          cat ${GITHUB_PATH}
+          echo "::debug:: Value of PATH environment variable: '${PATH}'"
           exit 3
         fi
