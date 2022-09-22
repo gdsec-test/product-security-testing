@@ -1,0 +1,21 @@
+name: Go builder for split-go-serializer demo
+on:
+  workflow_dispatch:
+jobs:
+  build:
+    runs-on: [non-pci,global-security]
+    steps:
+      - name: Checkout the repo
+        uses: actions/checkout@v3
+        with:
+          repository: 'godaddy/split-go-serializer'
+      - name: Set up Go
+        uses: actions/setup-go@v3
+        with:
+          go-version: 1.13
+      - name: Build
+        run:  go get ./...
+      - name: Test
+        run: |
+          go get golang.org/x/lint/golint
+          ./scripts/test.sh
