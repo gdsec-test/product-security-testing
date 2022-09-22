@@ -1,0 +1,16 @@
+name: Tartufo Scan
+on:
+  workflow_dispatch:
+jobs:
+  tartufo-scan:
+    runs-on: [non-pci,global-security]
+    steps:
+      - run: sudo apt-get update && sudo apt-get install -y python3 python3-pip git
+      - name: Install tartufo
+        run: pip install tartufo
+      - uses: actions/checkout@5a4ac9002d0be2fb38bd78e4b4dbde5606d7042f
+        name: Checkout the repo
+      - name: Launch tartufo scan
+        run: |
+          export PATH="/home/github-actions/.local/bin:$PATH"
+          tartufo scan-local-repo .
