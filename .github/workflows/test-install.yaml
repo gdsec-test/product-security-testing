@@ -16,16 +16,33 @@ jobs:
           role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
           role-skip-session-tagging: true
           role-duration-seconds: 900
-      - name: run_test
-        id: run_test
-        uses: ./.github/actions/install-executable
+      - id: get_values
+        run: |
+          readonly TEAM_NAME="$(aws ssm get-parameter --name '/AdminParams/Team/Name' | jq --raw-output '.Parameter.Value')"
+          readonly REGION_SPECIFIER="$(printf '${{ inputs.aws_region }}' | tr -d -- '-')"
+          echo "::set-output name=executables_bucket::gd-${TEAM_NAME}-cicd-${{ inputs.gd_org }}-assets-executables-${REGION_SPECIFIER}"
+
+      - name: Check out repository
+        uses: actions/checkout@5a4ac9002d0be2fb38bd78e4b4dbde5606d7042f
+
+      - name: Install Helm
+        uses: gdcorp-infosec/product-security-github/actions/install-executable@829aeddb0862a97a9be4568a4f30721607564325
         with:
-          bucket: s3://gd-security-dev-private-assets-lambda-scratch-uswest2/
+          bucket: ${{ steps.get_values.outputs.executables_bucket }}
           executable: helm
           postfix: v3.9.4
-          algorithm: sha384
-          checksum: edcfb0bcd9156ea1056b6ac6468011e49214c3557ed559520ed2657b7791d2e0ffe6c867e49dc3db9c50afa1fa7b953e
+          checksum: d7b04222b47873191178f1afb4338e31f7b1ff0bc47bbb582b49750aed3a4c38  # SHA-256
+
       - name: check_version
         id: check_version
         run: |
           helm version
+  notify:
+    name: Starting Build
+    uses: gdcorp-infosec/product-security-github/reusable/notify.yaml@829aeddb0862a97a9be4568a4f30721607564325
+    with:
+      gd_org: non-pci
+      status: unknown
+      subject: demo action
+      message: |-
+        *JOB*: testing
