@@ -22,3 +22,10 @@ $ pip install --upgrade pip && pip install -r requirements.txt
 ```bash
 $ python -m unittest -v
 ```
+| Type | Friendly Name | us-west-2 | us-east-1 | eu-west-1 |
+| :--- | :--- | :---: | :---: | :---: |
+| S3 | [Aggregated Logs Bucket](#aggregated-logs-bucket) | [:heavy_check_mark:][aggregated-logs-us-west-2] | [:heavy_check_mark:][aggregated-logs-us-east-1] | [:heavy_check_mark:][aggregated-logs-eu-west-1] |
+
+[aggregated-logs-us-west-2]:(/sceptre/config/non-pci/dev-private/us-west-2/s3/aggregated-logs.yaml)
+[aggregated-logs-us-east-1]:(/sceptre/config/non-pci/dev-private/us-east-1/s3/aggregated-logs.yaml)
+[aggregated-logs-eu-west-1]:(/sceptre/config/non-pci/dev-private/eu-west-1/s3/aggregated-logs.yaml)
