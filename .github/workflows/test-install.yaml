@@ -26,7 +26,7 @@ jobs:
         uses: actions/checkout@5a4ac9002d0be2fb38bd78e4b4dbde5606d7042f
 
       - name: Install Helm
-        uses: gdcorp-infosec/product-security-github/actions/install-executable@829aeddb0862a97a9be4568a4f30721607564325
+        uses: gdcorp-actions/install-executable-from-s3@74a2d96a079d750b09eba59abb1327391a723b94
         with:
           bucket: ${{ steps.get_values.outputs.executables_bucket }}
           executable: helm
@@ -37,12 +37,12 @@ jobs:
         id: check_version
         run: |
           helm version
-  notify:
-    name: Starting Build
-    uses: gdcorp-infosec/product-security-github/reusable/notify.yaml@829aeddb0862a97a9be4568a4f30721607564325
-    with:
-      gd_org: non-pci
-      status: unknown
-      subject: demo action
-      message: |-
-        *JOB*: testing
+  # notify:
+  #   name: Starting Build
+  #   uses: gdcorp-infosec/product-security-github/reusable/notify.yaml@829aeddb0862a97a9be4568a4f30721607564325
+  #   with:
+  #     gd_org: non-pci
+  #     status: unknown
+  #     subject: demo action
+  #     message: |-
+  #       *JOB*: testing
