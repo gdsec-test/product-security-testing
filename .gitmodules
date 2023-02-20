@@ -1,0 +1,3 @@
+[submodule "gdsec-code-review-challenges"]
+	path = gdsec-code-review-challenges
+	url = git@github.com:gdcorp-infosec/gdsec-code-review-challenges.git
