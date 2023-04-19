@@ -22,3 +22,5 @@ $ pip install --upgrade pip && pip install -r requirements.txt
 ```bash
 $ python -m unittest -v
 ```
+
+AWS_SECRET_ACCESS_KEY = "testingbadkey"
